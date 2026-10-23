@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fretwork: learn songs on guitar</title>
+<style>
+:root{
+  --paper:#e6ebe8;--card:#f5f8f6;--ink:#14302a;--mute:#566a64;--line:#c3cec9;--accent:#0d6a5c;
+  --board:#2a1912;--pearl:#f3edde;--nickel:#aeb4bd;--ok:#7fe3a6;--bad:#ff7b66;--warn:#f2c45a;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.45 var(--sans);padding:14px 14px 48px}
+.wrap{max-width:1120px;margin:0 auto}
+header.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:2px 2px 14px}
+h1{font:600 28px/1 var(--serif);margin:0;letter-spacing:-.01em}
+.tag{color:var(--mute);font-size:14px}
+.grid{display:grid;gap:14px;grid-template-areas:"song" "player" "practice" "tabs"}
+@media(min-width:980px){
+  .grid{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);grid-template-areas:"song practice" "player practice" "tabs practice";align-items:start}
+  #practice{position:sticky;top:14px}
+}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.card h2{font:600 19px/1.2 var(--serif);margin:0 0 10px}
+label.f{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+input,select,textarea,button{font:inherit;color:inherit}
+input[type=text],input[type=number],input[type=password],textarea,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fff}
+textarea{resize:vertical;min-height:62px;font-family:var(--mono);font-size:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>.grow{flex:1;min-width:150px}
+button{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 13px;min-height:42px}
+button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button:disabled{opacity:.5;cursor:not-allowed}
+:focus-visible{outline:3px solid #3aa595;outline-offset:2px}
+.hint{color:var(--mute);font-size:13px;margin:6px 0}
+.warn{color:#9a5b00;font-size:13px;margin:6px 0}
+a{color:var(--accent)}
+details{margin-top:10px}
+summary{cursor:pointer;color:var(--mute);font-size:14px;padding:4px 0}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--ink)}
+.chk input{width:18px;height:18px}
+.results{display:grid;gap:6px;margin-top:10px}
+.res{display:flex;gap:10px;text-align:left;align-items:center;padding:6px}
+.res img{width:80px;height:45px;object-fit:cover;border-radius:6px;flex:none;background:#ccd}
+.res span{display:block;font-size:14px;line-height:1.25}
+.res small{color:var(--mute)}
+.ytbox{position:relative;aspect-ratio:16/9;background:#101614;border-radius:10px;overflow:hidden}
+.ytbox iframe,.ytbox #yt{position:absolute;inset:0;width:100%;height:100%}
+.ytmsg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:18px;color:#cfd8d4;font-size:14px}
+.ytmsg[hidden]{display:none}
+.ctl{margin:10px 0 6px}
+.ctl label{display:flex;gap:6px;align-items:center;font-size:14px}
+.ctl select{width:auto}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.chip{padding:6px 12px;min-height:36px;border-radius:999px;font-size:14px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.edgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.edgrid .row input{flex:1;min-width:0}
+
+/* practice: the fretboard panel */
+#practice{background:var(--board);color:var(--pearl);border-color:#160c07;
+  background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 2px,transparent 2px 11px)}
+#practice h2{color:var(--pearl)}
+#practice .hint,#practice summary{color:#c9bca0}
+#practice button{background:#3a261b;border-color:#5a4030;color:var(--pearl)}
+#practice button.pri{background:var(--warn);border-color:var(--warn);color:#2a1912}
+#practice button.chip.on,#practice .seg button.on{background:var(--pearl);color:#2a1912;border-color:var(--pearl)}
+#practice input[type=range]{width:100%}
+#practice select{background:#3a261b;color:var(--pearl);border-color:#5a4030}
+.phead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.phead h2{margin:0}
+.seg{display:flex;gap:4px}
+.seg button{min-height:36px;padding:6px 12px;font-size:14px}
+.stage{display:flex;gap:14px;align-items:center;margin:6px 0 2px}
+#dia{flex:0 0 150px}
+#dia svg{width:100%;height:auto;display:block}
+.info{min-width:0}
+.big{font:600 44px/1 var(--serif);letter-spacing:-.02em}
+.frets{font:13px var(--mono);color:#c9bca0;margin:8px 0 10px}
+.strip{position:relative;display:flex;gap:6px;overflow-x:auto;padding:8px 2px 12px;scrollbar-width:thin}
+.col{--cb:#35221a;flex:0 0 auto;min-width:56px;text-align:center;border-radius:10px;padding:6px 6px 8px;background:var(--cb);border:1px solid transparent;cursor:pointer}
+.col .nm{font:600 15px var(--serif);margin-bottom:4px;white-space:nowrap}
+.col .ln{position:relative;height:19px;font:600 13px/19px var(--mono)}
+.col .ln::before{content:"";position:absolute;left:-6px;right:-6px;top:50%;height:1px;background:var(--nickel);opacity:.5}
+.col .ln span{position:relative;background:var(--cb);padding:0 3px}
+.col.cur{border-color:var(--warn)}
+.col.ok{--cb:#1d3a2b}
+.col.bad{--cb:#4d2520}
+.col.miss{--cb:#4d2520;opacity:.7}
+.fb{min-height:48px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.06);font-size:15px;margin:4px 0 10px}
+.fb.ok{background:#1d3a2b;color:var(--ok)}
+.fb.bad{background:#4d2520;color:#ffc2b8}
+.meter{position:relative;height:8px;border-radius:99px;background:#160c07;overflow:hidden}
+.meter #lvl{height:100%;width:0;background:var(--ok)}
+.meter i{position:absolute;top:0;bottom:0;width:2px;background:var(--warn)}
+.hearing{font:13px var(--mono);color:#c9bca0;margin:6px 0 10px}
+.stats{display:flex;gap:16px;font-size:14px;margin:12px 0 2px;color:#e3d8bd}
+.stats b{font-family:var(--mono);font-size:16px;color:var(--pearl)}
+#log{margin:8px 0 0;padding-left:18px;font-size:13px;color:#c9bca0}
+.setgrid{display:grid;gap:10px;margin-top:8px}
+.setgrid label{display:block;font-size:13px;color:#c9bca0}
+@media(max-width:420px){#dia{flex-basis:128px}.big{font-size:36px}}
+@media(prefers-reduced-motion:no-preference){.col,.fb{transition:background-color .2s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <h1>Fretwork</h1>
+  <span class="tag">Pick a song, learn it a part at a time, get corrected as you play.</span>
+</header>
+
+<main class="grid">
+
+<section class="card" id="song" style="grid-area:song">
+  <h2>Song</h2>
+  <label class="f" for="q">Song and artist</label>
+  <div class="row">
+    <input class="grow" id="q" type="text" placeholder="Song name and artist" autocomplete="off">
+    <button class="pri" id="bSearch">Search YouTube</button>
+  </div>
+  <div id="results" class="results" aria-live="polite"></div>
+  <details id="more">
+    <summary>No search key? Paste a YouTube link instead</summary>
+    <div class="row" style="margin-top:8px">
+      <input class="grow" id="url" type="text" placeholder="https://youtu.be/..." autocomplete="off">
+      <button id="bLoad">Load</button>
+    </div>
+    <p class="hint">Searching inside the app needs a free YouTube Data API key. Without one, <a id="ytlink" target="_blank" rel="noopener" href="https://www.youtube.com/">open YouTube</a>, copy the link, and paste it above.</p>
+    <label class="f" for="key">YouTube Data API key (kept in memory only)</label>
+    <input id="key" type="password" autocomplete="off">
+  </details>
+</section>
+
+<section class="card" id="player" style="grid-area:player">
+  <div class="ytbox"><div id="yt"></div><div class="ytmsg" id="ytmsg">Load a song and the video shows up here.</div></div>
+  <div class="row ctl">
+    <label>Speed
+      <select id="rate"><option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="1" selected>1x</option></select>
+    </label>
+    <label style="flex:1;min-width:140px">Volume <input id="vol" type="range" min="0" max="100" value="60" style="flex:1"></label>
+  </div>
+  <label class="chk"><input type="checkbox" id="loop" checked> Loop the selected section in the song</label>
+</section>
+
+<section class="card" id="tabs" style="grid-area:tabs">
+  <h2>Tabs</h2>
+  <div class="row">
+    <button class="pri" id="bGen">Find tabs with Claude</button>
+    <label class="chk"><input type="checkbox" id="web" checked> Search the web</label>
+  </div>
+  <p class="hint" id="genmsg">Generated tabs can be wrong. Check them by ear and fix anything below.</p>
+  <div class="row">
+    <label class="chk">Capo <input id="capo" type="number" min="0" max="12" value="0" style="width:72px"></label>
+    <button id="bDemo">Try a demo</button>
+  </div>
+  <div id="chips" class="chips"></div>
+  <div id="editor"></div>
+  <details>
+    <summary>Add your own section</summary>
+    <label class="f" for="newName">Name</label>
+    <input id="newName" type="text" placeholder="Verse">
+    <label class="f" for="newSteps">Steps</label>
+    <textarea id="newSteps" spellcheck="false" placeholder="G*4 D*4 Em*4 C*4"></textarea>
+    <div style="margin-top:8px"><button id="bAdd">Add section</button></div>
+  </details>
+</section>
+
+<section class="card" id="practice" style="grid-area:practice">
+  <div class="phead">
+    <h2 id="pTitle">Practice</h2>
+    <div class="seg" id="modeSeg">
+      <button data-m="learn" class="on">Learn</button>
+      <button data-m="play">Play along</button>
+    </div>
+  </div>
+  <div class="chips" id="parts"></div>
+  <div class="stage">
+    <div id="dia"></div>
+    <div class="info">
+      <div class="big" id="big">-</div>
+      <div class="frets" id="fr"></div>
+      <button id="bHear">Hear it</button>
+    </div>
+  </div>
+  <div class="strip" id="strip"></div>
+  <div class="fb" id="fb" aria-live="polite">Add or generate a tab to start.</div>
+  <div class="meter"><div id="lvl"></div><i id="gmark"></i></div>
+  <div class="hearing" id="hear">Mic is off</div>
+  <div class="row">
+    <button class="pri" id="bListen">Start listening</button>
+    <button id="bRestart">Restart</button>
+  </div>
+  <p class="hint">Wear headphones so the mic hears your guitar and not the song.</p>
+  <div class="stats"><span>Hits <b id="sHit">0</b></span><span>Misses <b id="sMiss">0</b></span><span>Accuracy <b id="sAcc">-</b></span></div>
+  <details>
+    <summary>Listening settings</summary>
+    <div class="setgrid">
+      <label>Mic threshold: raise it if the room is noisy
+        <input type="range" id="gate" min="0.004" max="0.08" step="0.001" value="0.012"></label>
+      <label>Strictness
+        <select id="strict"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="strict">Strict</option></select></label>
+      <label>Timing offset for play along: <span id="offv">0</span> ms (raise it if your hits register late)
+        <input type="range" id="off" min="-500" max="500" step="10" value="0"></label>
+      <label class="chk"><input type="checkbox" id="bg" checked> In Learn mode, play the song in the background</label>
+    </div>
+  </details>
+  <ol id="log"></ol>
+</section>
+
+</main>
+</div>
+
+<script>
+'use strict';
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TUN=[40,45,50,55,59,64]; // E2 A2 D3 G3 B3 E4, index 0 = low E
+const NN=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const PCM={C:0,'C#':1,Db:1,D:2,'D#':3,Eb:3,E:4,F:5,'F#':6,Gb:6,G:7,'G#':8,Ab:8,A:9,'A#':10,Bb:10,B:11};
+const nm=p=>NN[((p%12)+12)%12];
+const par=s=>[...s].map(c=>c==='x'?null:+c);
+
+/* ---------- chords ---------- */
+const OPEN={C:'x32010',D:'xx0232',E:'022100',G:'320003',A:'x02220',Am:'x02210',Em:'022000',Dm:'xx0231',F:'133211',Bm:'x24432',
+ B7:'x21202',E7:'020100',A7:'x02020',D7:'xx0212',G7:'320001',C7:'x32310',Cmaj7:'x32000',Fmaj7:'xx3210',Amaj7:'x02120',
+ Dmaj7:'xx0222',Gmaj7:'320002',Em7:'020000',Am7:'x02010',Dm7:'xx0211',Asus4:'x02230',Asus2:'x02200',Dsus4:'xx0233',
+ Dsus2:'xx0230',Esus4:'022200',Cadd9:'x32030','G/B':'x20003','D/F#':'200232','C/G':'320010'};
+const FING={C:'x32010',D:'xx0132',E:'023100',G:'210003',A:'x01230',Am:'x02310',Em:'023000',Dm:'xx0231',F:'134211',Bm:'x13421',
+ B7:'x21304',E7:'020100',A7:'x02030',D7:'xx0213',G7:'320001'};
+const SH_E={'':[0,2,2,1,0,0],m:[0,2,2,0,0,0],'7':[0,2,0,1,0,0],m7:[0,2,0,0,0,0],maj7:[0,2,1,1,0,0],sus4:[0,2,2,2,0,0],'5':[0,2,2,null,null,null]};
+const SH_A={'':[null,0,2,2,2,0],m:[null,0,2,2,1,0],'7':[null,0,2,0,2,0],m7:[null,0,2,0,1,0],maj7:[null,0,2,1,2,0],sus4:[null,0,2,2,3,0],'5':[null,0,2,2,null,null]};
+function simplify(q){
+  if(q in SH_E) return q;
+  if(/^m(7|9|11|13)/.test(q)) return 'm7';
+  if(/^maj(9|11|13)/.test(q)) return 'maj7';
+  if(/^(7|9|11|13)/.test(q)) return '7';
+  if(/^m/.test(q)&&!/^maj/.test(q)) return 'm';
+  if(/^sus2/.test(q)) return '';
+  if(/^sus/.test(q)) return 'sus4';
+  return '';
+}
+function chordShape(raw){
+  const name=raw.replace(/^([A-G][#b]?)(min|-)/,'$1m').replace(/M7|Maj7/,'maj7');
+  if(OPEN[name]) return {frets:par(OPEN[name]),fing:FING[name]?par(FING[name]):null,name};
+  const m=name.match(/^([A-G][#b]?)([^/]*)(?:\/([A-G][#b]?))?$/);
+  if(!m) return null;
+  const root=PCM[m[1]]; if(root==null) return null;
+  const q=m[2], q2=simplify(q), approx=q2!==q;
+  const base=m[1]+q2;
+  if(OPEN[base]) return {frets:par(OPEN[base]),fing:FING[base]?par(FING[base]):null,name,approx};
+  const e=(root-4+12)%12, a=(root-9+12)%12, useE=e<=a;
+  const sh=(useE?SH_E:SH_A)[q2], off=useE?e:a;
+  return {frets:sh.map(v=>v==null?null:v+off),fing:null,name,approx};
+}
+function mkStep(frets,beats,label,fing,type,approx){
+  return {frets,beats:Math.max(.25,+beats||1),label,name:label.replace(/\*.*$/,''),fing,type,approx:!!approx};
+}
+function parseStep(tok){
+  const [t,b]=tok.split('*');
+  if(t.includes(':')){
+    const fr=[null,null,null,null,null,null]; let ok=false;
+    for(const p of t.split('+')){
+      const [s,f]=p.split(':').map(Number);
+      if(s>=1&&s<=6&&f>=0&&f<=22){fr[6-s]=f;ok=true}
+    }
+    if(!ok) return null;
+    const st=mkStep(fr,b||1,tok,null,'note');
+    st.name=fr.map((f,i)=>f==null?null:nm(TUN[i]+f)).filter(Boolean).join('+');
+    return st;
+  }
+  const c=chordShape(t); if(!c) return null;
+  const st=mkStep(c.frets,b||4,tok,c.fing,'chord',c.approx);
+  st.name=c.name; return st;
+}
+function parseSteps(text){
+  const out=[],bad=[];
+  String(text||'').trim().split(/[\s,|]+/).filter(Boolean).forEach(t=>{const s=parseStep(t); s?out.push(s):bad.push(t)});
+  return {out,bad};
+}
+
+/* ---------- state ---------- */
+const PART=4;
+const S={vid:null,player:null,ytReady:false,sections:[],sel:-1,part:'all',mode:'learn',capo:0,listening:false,
+  idx:0,hits:0,miss:0,log:[],strict:'normal',offset:0,bg:true,loop:true,rate:1,gate:0.012,
+  runActive:false,runDone:false,runGuard:0};
+const selSec=()=>S.sections[S.sel]||null;
+function range(){
+  const sec=selSec(); if(!sec) return [0,0];
+  const n=sec.steps.length;
+  return S.part==='all'?[0,n]:[S.part*PART,Math.min(n,S.part*PART+PART)];
+}
+function target(st){
+  const midis=st.frets.map((f,i)=>f==null?null:TUN[i]+f+S.capo);
+  return {midis,pcs:[...new Set(midis.filter(m=>m!=null).map(m=>m%12))]};
+}
+function times(sec){
+  let t=sec.start+S.offset/1000; const bt=60/(sec.bpm||80);
+  sec.steps.forEach(s=>{s.t=t;t+=s.beats*bt});
+}
+const getVT=()=>{try{return S.ytReady?S.player.getCurrentTime():0}catch(e){return 0}};
+
+/* ---------- YouTube ---------- */
+let ytLoad=null;
+function ensureYT(){
+  if(window.YT&&YT.Player) return Promise.resolve();
+  if(ytLoad) return ytLoad;
+  ytLoad=new Promise((res,rej)=>{
+    window.onYouTubeIframeAPIReady=res;
+    const s=document.createElement('script');
+    s.src='https://www.youtube.com/iframe_api';
+    s.onerror=()=>{ytLoad=null;rej(new Error('blocked'))};
+    document.head.appendChild(s);
+    setTimeout(()=>{if(!(window.YT&&YT.Player)){ytLoad=null;rej(new Error('timeout'))}},9000);
+  });
+  return ytLoad;
+}
+function ytMsg(t){const m=$('#ytmsg');m.textContent=t;m.hidden=!t}
+function ytError(code){
+  const map={2:'That link does not look like a video.',5:'The player hit an error. Try another upload.',100:'That video was not found.',
+    101:'The owner blocks embedding. Pick another upload of the song.',150:'The owner blocks embedding. Pick another upload of the song.'};
+  ytMsg(map[code]||'The player could not start here. If you opened this as a local file, host it (drag it into Netlify Drop, for example) or run it from the Claude preview.');
+}
+async function loadVideo(id){
+  S.vid=id; ytMsg('Loading the video...');
+  try{await ensureYT()}catch(e){ytMsg('YouTube could not load. The preview may block it. Download this file and open it in your browser, or host it.');return}
+  if(S.player&&S.player.cueVideoById){S.player.cueVideoById(id);ytMsg('');return}
+  const pv={playsinline:1,rel:0,modestbranding:1};
+  if(location.protocol.startsWith('http')) pv.origin=location.origin;
+  S.player=new YT.Player('yt',{videoId:id,width:'100%',height:'100%',playerVars:pv,events:{
+    onReady:()=>{S.ytReady=true;ytMsg('');S.player.setVolume(+$('#vol').value);S.player.setPlaybackRate(S.rate)},
+    onError:e=>ytError(e.data)}});
+}
+const ytId=u=>{const m=String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/);return m?m[1]:(/^[\w-]{11}$/.test(String(u).trim())?String(u).trim():null)};
+const dec=s=>{const t=document.createElement('textarea');t.innerHTML=s;return t.value};
+
+async function search(){
+  const q=$('#q').value.trim(), key=$('#key').value.trim(), box=$('#results');
+  if(!q){box.innerHTML='<p class="hint">Type a song and artist first.</p>';return}
+  $('#ytlink').href='https://www.youtube.com/results?search_query='+encodeURIComponent(q);
+  if(!key){
+    $('#more').open=true;
+    box.innerHTML='<p class="hint">Add a YouTube Data API key below to search here. Or open YouTube with the link below, copy the video link, and load it.</p>';
+    return;
+  }
+  box.innerHTML='<p class="hint">Searching...</p>';
+  try{
+    const r=await fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=6&videoEmbeddable=true&q='+encodeURIComponent(q)+'&key='+encodeURIComponent(key));
+    const d=await r.json();
+    if(d.error) throw new Error(d.error.message);
+    box.innerHTML=(d.items||[]).map(it=>`<button class="res" data-id="${esc(it.id.videoId)}"><img alt="" src="${esc(it.snippet.thumbnails.default.url)}"><span>${esc(dec(it.snippet.title))}<br><small>${esc(dec(it.snippet.channelTitle))}</small></span></button>`).join('')||'<p class="hint">No results.</p>';
+  }catch(e){box.innerHTML='<p class="warn">Search failed: '+esc(e.message)+'</p>'}
+}
+
+/* ---------- Claude tab lookup ---------- */
+async function askClaude(song,web){
+  const prompt=`Song: ${song}
+Make a beginner-friendly guitar arrangement of this song's main parts. Reply with JSON only, no markdown, in this shape:
+{"title":"","artist":"","capo":0,"bpm":0,"sections":[{"name":"Intro","start":0,"end":0,"steps":"G*4 D*4 Em*4 C*4"}]}
+Rules: standard tuning. "steps" is space-separated tokens. A chord token is a chord name (G, Em7, Bm, F#m, D/F#) with optional *beats (default 4). A single note or riff note is string:fret, string 6 = low E and string 1 = high e, like 6:3 or 5:2, default 1 beat, and + plays notes together (6:3+5:5 is a power chord). capo is the capo fret for the easiest version, and chord shapes are relative to the capo. Give 3 to 6 sections (Intro, Verse, Chorus...), at most 16 tokens each. start and end are your best guess in seconds into the studio recording (0 if unsure). If you are unsure of a riff, give the simplified chord progression instead of inventing notes. The input may be a YouTube title, so ignore tags like Official Video. Output nothing but the JSON.`;
+  const body={model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:prompt}]};
+  if(web) body.tools=[{type:'web_search_20250305',name:'web_search'}];
+  const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await r.json();
+  const blocks=(d.content||[]).filter(b=>b.type==='text').map(b=>b.text).reverse();
+  for(const t of blocks){
+    const a=t.indexOf('{'),z=t.lastIndexOf('}');
+    if(a<0||z<a) continue;
+    try{return JSON.parse(t.slice(a,z+1))}catch(e){}
+  }
+  throw new Error('No usable tab came back');
+}
+async function genTabs(){
+  const q=$('#q').value.trim();
+  if(!q){gmsg('Type a song and artist first.');return}
+  $('#bGen').disabled=true; gmsg('Asking Claude for the tabs. This can take a bit...');
+  try{
+    let data;
+    try{data=await askClaude(q,$('#web').checked)}catch(e){if($('#web').checked)data=await askClaude(q,false);else throw e}
+    if(!data.sections||!data.sections.length) throw new Error('Empty tab');
+    S.capo=Math.max(0,Math.min(12,+data.capo||0)); $('#capo').value=S.capo;
+    S.sections=[]; S.sel=-1;
+    data.sections.forEach(s=>addSection({name:s.name||'Part',start:+s.start||0,end:+s.end||0,bpm:+s.bpm||+data.bpm||80,text:s.steps||''},false));
+    select(0);
+    gmsg(`Got ${S.sections.length} sections${S.capo?', capo '+S.capo:''}. Set each section's start and end to where it sits in the video, then practice. Check the chords by ear.`);
+  }catch(e){
+    gmsg('Could not get tabs here. This lookup only works inside Claude. You can type chords below or try the demo.');
+  }
+  $('#bGen').disabled=false;
+}
+const gmsg=t=>{$('#genmsg').textContent=t};
+
+/* ---------- sections ---------- */
+function addSection(o,sel=true){
+  const r=parseSteps(o.text);
+  S.sections.push({name:o.name||'Section',start:o.start||0,end:o.end||0,bpm:o.bpm||80,text:o.text||'',steps:r.out,bad:r.bad});
+  if(sel) select(S.sections.length-1);
+}
+function select(i){
+  stopListen(); S.sel=i; S.part='all'; resetRun(); resetStats(); renderAll();
+}
+function resetRun(){
+  const sec=selSec(); if(!sec) return;
+  sec.steps.forEach(s=>{s.state='';s.tries=0});
+  S.idx=range()[0];
+}
+function resetStats(){S.hits=0;S.miss=0;S.log=[]}
+
+/* ---------- rendering ---------- */
+function renderAll(){renderChips();renderEditor();renderPractice()}
+function renderChips(){
+  $('#chips').innerHTML=S.sections.map((s,i)=>`<button class="chip ${i===S.sel?'on':''}" data-i="${i}">${esc(s.name)}</button>`).join('');
+}
+function renderEditor(){
+  const sec=selSec(), ed=$('#editor');
+  if(!sec){ed.innerHTML='<p class="hint">No sections yet. Find tabs, try the demo, or add your own section.</p>';return}
+  ed.innerHTML=`<div class="edgrid">
+    <div><label class="f">Name</label><input type="text" data-f="name" value="${esc(sec.name)}"></div>
+    <div><label class="f">BPM</label><input type="number" data-f="bpm" min="30" max="240" value="${sec.bpm}"></div>
+    <div><label class="f">Starts at (sec in video)</label><div class="row"><input type="number" step="0.5" min="0" data-f="start" value="${sec.start}"><button data-act="now-start" title="Use the player's current time">Now</button></div></div>
+    <div><label class="f">Ends at (sec in video)</label><div class="row"><input type="number" step="0.5" min="0" data-f="end" value="${sec.end}"><button data-act="now-end" title="Use the player's current time">Now</button></div></div>
+  </div>
+  <label class="f">Steps</label>
+  <textarea data-f="text" spellcheck="false">${esc(sec.text)}</textarea>
+  <p class="hint">Chords: G Em7 D/F#. Add *2 for two beats. Single notes are string:fret, like 5:3 for string 5, fret 3. Join with + to play together. Pause the video where the first chord lands and press Now to set the start.</p>
+  ${sec.bad.length?`<p class="warn">Skipped, not understood: ${esc(sec.bad.join(' '))}</p>`:''}
+  <button data-act="remove">Remove section</button>`;
+}
+function diagram(st){
+  const f=st.frets, used=f.filter(x=>x!=null&&x>0);
+  const max=used.length?Math.max(...used):0, min=used.length?Math.min(...used):1;
+  const start=max<=5?1:min, rows=5;
+  const X=i=>26+i*22, Y=r=>38+r*28;
+  let s=`<svg viewBox="0 0 176 196" role="img" aria-label="Chord diagram for ${esc(st.name)}">`;
+  for(let r=0;r<=rows;r++){const nut=r===0&&start===1;
+    s+=`<line x1="${X(0)}" x2="${X(5)}" y1="${Y(r)}" y2="${Y(r)}" stroke="#aeb4bd" stroke-width="${nut?5:1.2}" opacity="${nut?1:.7}"/>`}
+  for(let i=0;i<6;i++) s+=`<line x1="${X(i)}" x2="${X(i)}" y1="${Y(0)}" y2="${Y(rows)}" stroke="#d9c9a0" stroke-width="${(2.4-i*.3).toFixed(1)}"/>`;
+  if(start>1) s+=`<text x="${X(5)+10}" y="${Y(0)+19}" fill="#f3edde" font-size="13" font-family="ui-monospace,monospace">${start}fr</text>`;
+  for(let i=0;i<6;i++){const v=f[i];
+    if(v==null&&st.type==='chord') s+=`<text x="${X(i)}" y="27" text-anchor="middle" fill="#ff9a86" font-size="15" font-family="ui-monospace,monospace">x</text>`;
+    else if(v===0) s+=`<circle cx="${X(i)}" cy="22" r="5" fill="none" stroke="#f3edde" stroke-width="1.6"/>`}
+  let bFrom=-1,bTo=-1;
+  if(used.length){
+    const idxs=f.map((v,i)=>v===min?i:-1).filter(i=>i>=0);
+    const a=idxs[0],z=idxs[idxs.length-1];
+    if(z-a>=3&&f.slice(a,z+1).every(v=>v!=null&&v>=min)){
+      bFrom=a;bTo=z;
+      s+=`<rect x="${X(a)-9}" y="${Y(min-start)+5}" width="${X(z)-X(a)+18}" height="18" rx="9" fill="#f3edde"/>`;
+      if(st.fing&&st.fing[a]) s+=`<text x="${X(a)}" y="${Y(min-start)+18}" text-anchor="middle" font-size="11" font-weight="700" fill="#2a1912">${st.fing[a]}</text>`;
+    }
+  }
+  for(let i=0;i<6;i++){const v=f[i]; if(!v||v<=0) continue;
+    const r=v-start; if(r<0||r>=rows) continue;
+    if(i>=bFrom&&i<=bTo&&v===min&&bFrom>=0) continue;
+    s+=`<circle cx="${X(i)}" cy="${Y(r)+14}" r="9" fill="#f3edde"/>`;
+    if(st.fing&&st.fing[i]) s+=`<text x="${X(i)}" y="${Y(r)+18}" text-anchor="middle" font-size="11" font-weight="700" fill="#2a1912">${st.fing[i]}</text>`;
+  }
+  return s+'</svg>';
+}
+function renderPractice(){
+  const sec=selSec(), [a,b]=range();
+  $('#pTitle').textContent=sec?sec.name:'Practice';
+  document.querySelectorAll('#modeSeg button').forEach(x=>x.classList.toggle('on',x.dataset.m===S.mode));
+  // parts
+  let ph='';
+  if(sec&&sec.steps.length>PART){
+    const n=Math.ceil(sec.steps.length/PART);
+    for(let i=0;i<n;i++) ph+=`<button class="chip ${S.part===i?'on':''}" data-p="${i}">Part ${i+1}</button>`;
+    ph+=`<button class="chip ${S.part==='all'?'on':''}" data-p="all">All</button>`;
+  }
+  $('#parts').innerHTML=ph;
+  const st=sec&&sec.steps[S.idx];
+  if(st){
+    $('#dia').innerHTML=diagram(st);
+    $('#big').textContent=st.name;
+    $('#fr').textContent=(st.approx?'Simplified shape. ':'')+'Frets low to high: '+st.frets.map(v=>v==null?'x':v).join(' ')+(S.capo?`  (capo ${S.capo})`:'');
+  }else{$('#dia').innerHTML='';$('#big').textContent='-';$('#fr').textContent=''}
+  renderStrip();
+  $('#sHit').textContent=S.hits;$('#sMiss').textContent=S.miss;
+  $('#sAcc').textContent=(S.hits+S.miss)?Math.round(100*S.hits/(S.hits+S.miss))+'%':'-';
+  $('#log').innerHTML=S.log.map(l=>`<li>${esc(l)}</li>`).join('');
+  $('#bListen').textContent=S.listening?'Stop':(S.mode==='play'?'Start play along':'Start listening');
+  $('#bListen').disabled=!sec||!sec.steps.length;
+  $('#bHear').disabled=!st; $('#bRestart').disabled=!sec;
+  $('#gmark').style.left=Math.min(100,S.gate*500)+'%';
+}
+function renderStrip(){
+  const sec=selSec(), el=$('#strip'), [a,b]=range();
+  if(!sec){el.innerHTML='';return}
+  el.innerHTML=sec.steps.slice(a,b).map((s,k)=>{
+    const i=a+k;
+    const rows=[5,4,3,2,1,0].map(j=>`<div class="ln"><span>${s.frets[j]==null?(s.type==='note'?'-':'x'):s.frets[j]}</span></div>`).join('');
+    return `<div class="col ${i===S.idx?'cur':''} ${s.state||''}" data-i="${i}"><div class="nm">${esc(s.name)}</div>${rows}</div>`;
+  }).join('');
+  const cur=el.querySelector('.cur');
+  if(cur) el.scrollLeft=cur.offsetLeft-el.clientWidth/2+cur.clientWidth/2;
+}
+function fb(kind,text){const e=$('#fb');e.className='fb '+(kind||'');e.textContent=text}
+function logMiss(st,msg){S.log.unshift(st.name+': '+msg);S.log=S.log.slice(0,6)}
+
+/* ---------- audio: mic analysis ---------- */
+const A={ctx:null,an:null,stream:null,td:null,fd:null,mag:null,timer:null,state:'idle',ema:0,lastEnd:0,cool:200,mute:0,
+  t0:0,vt0:0,fast:false,c:null,ys:[],win:340,heardAt:0};
+function ensureCtx(){
+  if(!A.ctx) A.ctx=new (window.AudioContext||window.webkitAudioContext)();
+  if(A.ctx.state==='suspended') A.ctx.resume();
+  return A.ctx;
+}
+async function startMic(){
+  ensureCtx();
+  A.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  const src=A.ctx.createMediaStreamSource(A.stream);
+  A.an=A.ctx.createAnalyser(); A.an.fftSize=16384; A.an.smoothingTimeConstant=0;
+  src.connect(A.an);
+  A.td=new Float32Array(A.an.fftSize); A.fd=new Float32Array(A.an.frequencyBinCount); A.mag=new Float32Array(A.an.frequencyBinCount);
+  A.win=A.an.fftSize/A.ctx.sampleRate*1000;
+  A.state='idle';A.ema=0;A.lastEnd=0;
+  A.timer=setInterval(tick,40);
+}
+function stopMic(){
+  clearInterval(A.timer);A.timer=null;
+  if(A.stream){A.stream.getTracks().forEach(t=>t.stop());A.stream=null}
+  A.state='idle'; $('#lvl').style.width='0'; $('#hear').textContent='Mic is off';
+}
+function yin(buf,fs){
+  const N=buf.length,W=2048,maxTau=Math.floor(fs/70),off=N-W-maxTau;
+  if(off<0) return null;
+  const d=new Float32Array(maxTau),cm=new Float32Array(maxTau);
+  for(let tau=1;tau<maxTau;tau++){let s=0;for(let i=0;i<W;i++){const x=buf[off+i]-buf[off+i+tau];s+=x*x}d[tau]=s}
+  let run=0;cm[0]=1;
+  for(let tau=1;tau<maxTau;tau++){run+=d[tau];cm[tau]=d[tau]*tau/(run||1)}
+  const tmin=Math.floor(fs/1300);let tau=-1;
+  for(let t=tmin;t<maxTau-1;t++){
+    if(cm[t]<0.15){while(t+1<maxTau-1&&cm[t+1]<cm[t])t++;tau=t;break}
+  }
+  if(tau<1) return null;
+  const a=cm[tau-1],b=cm[tau],c=cm[tau+1],den=a-2*b+c;
+  const p=den?0.5*(a-c)/den:0;
+  return {f:fs/(tau+p),clarity:1-b};
+}
+function addChroma(){
+  A.an.getFloatFrequencyData(A.fd);
+  const fs=A.ctx.sampleRate,nb=A.fd.length,df=fs/A.an.fftSize;
+  const k0=Math.max(2,Math.floor(75/df)),k1=Math.min(nb-3,Math.floor(1700/df));
+  let mx=0;
+  for(let k=k0-1;k<=k1+1;k++){const m=Math.pow(10,A.fd[k]/20);A.mag[k]=m;if(m>mx)mx=m}
+  for(let k=k0;k<=k1;k++){
+    const m=A.mag[k];
+    if(m>A.mag[k-1]&&m>=A.mag[k+1]&&m>mx*0.08){
+      const a=Math.log(A.mag[k-1]+1e-12),b=Math.log(m+1e-12),c=Math.log(A.mag[k+1]+1e-12),den=a-2*b+c;
+      const p=den?0.5*(a-c)/den:0;
+      const midi=69+12*Math.log2((k+p)*df/440),n=Math.round(midi);
+      if(Math.abs(midi-n)<0.42) A.c[((n%12)+12)%12]+=m;
+    }
+  }
+  A.cn++;
+}
+function curTarget(){
+  const sec=selSec(); if(!sec) return null;
+  if(S.mode==='learn') return sec.steps[S.idx]||null;
+  const vt=getVT(),[a,b]=range(); times(sec);
+  let best=null,bd=1e9;
+  for(let i=a;i<b;i++){const d=Math.abs(sec.steps[i].t-vt);if(d<bd){bd=d;best=sec.steps[i]}}
+  return best;
+}
+const wantFast=()=>{const st=curTarget();return !!st&&target(st).pcs.length===1};
+function tick(){
+  const now=performance.now();
+  A.an.getFloatTimeDomainData(A.td);
+  const N=A.td.length;let s=0;
+  for(let i=N-1024;i<N;i++){const v=A.td[i];s+=v*v}
+  const rms=Math.sqrt(s/1024);
+  $('#lvl').style.width=Math.min(100,rms*500)+'%';
+  if(now<A.mute){A.state='idle';A.ema=rms;A.lastEnd=now;return}
+  let y=null;
+  if(rms>S.gate*0.8) y=yin(A.td,A.ctx.sampleRate);
+  if(y&&y.clarity>0.8){
+    const m=69+12*Math.log2(y.f/440),n=Math.round(m),c=Math.round((m-n)*100);
+    A.heardAt=now;
+    $('#hear').textContent=`Hearing ${nm(n)}${Math.floor(n/12)-1} ${c>0?'+':''}${c} cents`;
+  }else if(now-A.heardAt>600) $('#hear').textContent='Listening...';
+  if(A.state==='idle'){
+    if(rms>S.gate&&rms>A.ema*1.6&&now-A.lastEnd>A.cool){
+      A.state='collect';A.t0=now;A.vt0=getVT();A.fast=wantFast();
+      A.c=new Float32Array(12);A.cn=0;A.ys=[];
+    }
+  }else{
+    const dt=now-A.t0,lo=A.fast?60:A.win+30,hi=A.fast?230:A.win+410;
+    if(dt>=lo&&dt<=hi){
+      if(y&&y.clarity>0.8) A.ys.push(69+12*Math.log2(y.f/440));
+      if(!A.fast) addChroma();
+    }
+    if(dt>hi){finishAttempt();A.state='idle';A.lastEnd=now;A.cool=A.fast?80:200}
+  }
+  A.ema+=(rms-A.ema)*(rms>A.ema?0.1:0.2);
+}
+function finishAttempt(){
+  const att={vt:A.vt0,fast:A.fast};
+  if(A.ys.length){const ys=[...A.ys].sort((p,q)=>p-q);att.midi=ys[ys.length>>1]}
+  const tot=A.c.reduce((p,q)=>p+q,0);
+  if(tot>0&&A.cn>0) att.chroma=Array.from(A.c,x=>x/tot);
+  if(att.midi==null&&!att.chroma) return;
+  S.mode==='learn'?learnAttempt(att):playAttempt(att);
+}
+
+/* ---------- judging ---------- */
+function judge(st,att){
+  const t=target(st),T=t.pcs;
+  if(T.length===1){
+    if(att.midi==null) return {skip:true,msg:'Could not pick out a clear note. Pluck one string and let it ring.'};
+    const m=att.midi,n=Math.round(m),cents=Math.round((m-n)*100),want=t.midis.find(x=>x!=null);
+    if(((n%12)+12)%12!==T[0]) return {ok:false,msg:`Heard ${nm(n)}, wanted ${nm(want)}.`};
+    if(Math.abs(cents)>45) return {ok:false,msg:`Right note but ${cents>0?'sharp':'flat'}. Check your tuning.`};
+    return {ok:true,msg:n!==want?`${nm(n)} is right. It is a different octave from the tab, which is fine for now.`:''};
+  }
+  if(!att.chroma) return {skip:true,msg:'Strum all the strings once and let it ring.'};
+  const c=att.chroma,n=T.length,th={easy:.55,normal:.66,strict:.76}[S.strict];
+  const share=T.reduce((s,p)=>s+c[p],0),avg=share/n;
+  const missing=T.filter(p=>c[p]<Math.max(.025,avg*.3));
+  const top=c.map((v,p)=>[v,p]).sort((p,q)=>q[0]-p[0]).slice(0,3).filter(x=>x[0]>.1).map(x=>nm(x[1]));
+  const extra=c.map((v,p)=>[v,p]).filter(([v,p])=>!T.includes(p)&&v>.13).sort((p,q)=>q[0]-p[0]).map(x=>x[1]);
+  if(share>=th&&missing.length<=(n>=4?1:0)) return {ok:true,msg:''};
+  let msg=top.length?`Heard ${top.join(' ')}. `:'';
+  if(missing.length) msg+=`Missing ${missing.map(nm).join(', ')}. Check those strings ring out.`;
+  else if(extra.length) msg+=`Extra ${extra.map(nm).join(', ')}. Mute stray strings.`;
+  else msg+='Sounds muddy. Press closer to the frets.';
+  return {ok:false,msg};
+}
+
+/* ---------- learn mode ---------- */
+function learnAttempt(att){
+  if(!S.listening) return;
+  const sec=selSec(),st=sec&&sec.steps[S.idx]; if(!st) return;
+  const r=judge(st,att);
+  if(r.skip){fb('',r.msg);return}
+  if(r.ok){
+    st.state='ok';S.hits++;fb('ok',r.msg||'Clean. Next one.');
+    const nx=S.idx+1;
+    if(nx<range()[1]){S.idx=nx;renderPractice()} else {renderPractice();partDone()}
+  }else{
+    st.tries=(st.tries||0)+1;S.miss++;st.state='bad';fb('bad',r.msg);logMiss(st,r.msg);renderPractice();
+    setTimeout(()=>{if(st.state==='bad'){st.state='';renderStrip()}},900);
+  }
+}
+function partDone(){
+  const sec=selSec(),[a,b]=range();
+  const clean=sec.steps.slice(a,b).filter(s=>!s.tries).length;
+  fb('ok',`Done: ${clean} of ${b-a} first try.`);
+  const more=typeof S.part==='number'&&(S.part+1)*PART<sec.steps.length;
+  setTimeout(()=>{
+    if(!S.listening||S.mode!=='learn') return;
+    if(more) S.part++;
+    resetRun();renderAll();
+    fb('',more?'Next part. Go when you are ready.':'Again from the top.');
+  },1500);
+}
+
+/* ---------- play along ---------- */
+const tolFor=(s,bt)=>Math.min(.5*S.rate,s.beats*bt*.5);
+function startPlay(){
+  const sec=selSec(); times(sec);
+  S.runDone=false;S.runActive=true;S.runGuard=performance.now()+1500;
+  resetRun();
+  const [a]=range();
+  S.player.setPlaybackRate(S.rate);
+  S.player.seekTo(Math.max(0,sec.steps[a].t-2),true);
+  S.player.playVideo();
+  fb('','Playing. The song leads in, then your first step lands on the highlighted column.');
+  renderPractice();
+}
+function playTick(){
+  if(!S.runActive||performance.now()<S.runGuard||S.runDone) return;
+  if(S.player.getPlayerState()!==1) return;
+  const sec=selSec(),[a,b]=range(),vt=getVT(),bt=60/(sec.bpm||80);
+  times(sec);
+  let changed=false;
+  for(let i=a;i<b;i++){
+    const s=sec.steps[i];
+    if(!s.state&&vt>s.t+tolFor(s,bt)+1.2){s.state='miss';S.miss++;logMiss(s,'no hit in time');changed=true}
+  }
+  let cur=a;for(let i=a;i<b;i++) if(sec.steps[i].t<=vt+0.1) cur=i;
+  if(cur!==S.idx){S.idx=cur;changed=true}
+  const last=sec.steps[b-1];
+  if(vt>last.t+last.beats*bt+0.3){finishRun();return}
+  if(changed) renderPractice();
+}
+function playAttempt(att){
+  if(!S.runActive||S.runDone) return;
+  const sec=selSec(),[a,b]=range(),bt=60/(sec.bpm||80);
+  times(sec);
+  let bi=-1,bd=1e9;
+  for(let i=a;i<b;i++){const d=Math.abs(sec.steps[i].t-att.vt);if(d<bd){bd=d;bi=i}}
+  const st=sec.steps[bi];
+  if(!st||bd>tolFor(st,bt)||st.state) return;
+  const r=judge(st,att);
+  if(r.skip) return;
+  if(r.ok){st.state='ok';S.hits++;fb('ok',r.msg||st.name+' landed.')}
+  else{st.state='bad';S.miss++;fb('bad',r.msg);logMiss(st,r.msg)}
+  renderPractice();
+}
+function finishRun(){
+  S.runDone=true;
+  const sec=selSec(),[a,b]=range();
+  const ok=sec.steps.slice(a,b).filter(s=>s.state==='ok').length;
+  fb(ok===b-a?'ok':'',`Run finished: ${ok} of ${b-a} landed.`);
+  setTimeout(()=>{
+    if(!S.listening||S.mode!=='play') return;
+    if($('#loop').checked) startPlay(); else stopListen();
+  },2000);
+}
+
+/* ---------- listening control ---------- */
+async function startListen(){
+  const sec=selSec(); if(!sec||!sec.steps.length) return;
+  if(S.mode==='play'){
+    if(!S.ytReady){fb('bad','Play along needs a loaded video. Pick a song first.');return}
+    if(!(sec.end>sec.start)) {fb('bad','Set where this section starts and ends in the video first (Tabs, then Now).');return}
+  }
+  try{await startMic()}catch(e){
+    fb('bad','The microphone is blocked here. Allow mic access, or open this file in your browser.');return;
+  }
+  S.listening=true; resetStats(); resetRun();
+  if(S.mode==='learn'){
+    fb('','Listening. Play the highlighted '+(selSec().steps[S.idx].type==='note'?'note.':'chord.'));
+    if(S.bg&&S.ytReady&&sec.end>sec.start){S.player.setPlaybackRate(S.rate);S.player.seekTo(sec.start,true);S.player.playVideo()}
+  }else startPlay();
+  renderPractice();
+}
+function stopListen(){
+  if(!S.listening&&!A.stream) return;
+  S.listening=false;S.runActive=false;
+  stopMic();
+  try{if(S.ytReady) S.player.pauseVideo()}catch(e){}
+  renderPractice();
+}
+function strum(st){
+  const ctx=ensureCtx(),m=target(st).midis,t0=ctx.currentTime;
+  A.mute=performance.now()+2200;
+  m.forEach((n,i)=>{
+    if(n==null) return;
+    const t=t0+i*0.04,o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();
+    o.type='triangle';o.frequency.value=440*Math.pow(2,(n-69)/12);
+    f.type='lowpass';f.frequency.value=2400;
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.16,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+1.5);
+    o.connect(f);f.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+1.6);
+  });
+}
+
+/* ---------- looping the song when not in a run ---------- */
+setInterval(()=>{
+  if(!S.ytReady) return;
+  const sec=selSec(); if(!sec) return;
+  try{
+    if(S.mode==='play'&&S.listening){playTick();return}
+    if($('#loop').checked&&sec.end>sec.start+1&&S.player.getPlayerState()===1){
+      const t=S.player.getCurrentTime();
+      if(t>=sec.end&&t<sec.end+2) S.player.seekTo(sec.start,true);
+    }
+  }catch(e){}
+},120);
+
+/* ---------- events ---------- */
+$('#bSearch').onclick=search;
+$('#q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
+$('#q').addEventListener('input',()=>{$('#ytlink').href='https://www.youtube.com/results?search_query='+encodeURIComponent($('#q').value)});
+$('#results').addEventListener('click',e=>{const b=e.target.closest('.res');if(b) loadVideo(b.dataset.id)});
+$('#bLoad').onclick=()=>{const id=ytId($('#url').value);id?loadVideo(id):($('#results').innerHTML='<p class="warn">That does not look like a YouTube link.</p>')};
+$('#rate').onchange=e=>{S.rate=+e.target.value;if(S.ytReady)S.player.setPlaybackRate(S.rate)};
+$('#vol').oninput=e=>{if(S.ytReady)S.player.setVolume(+e.target.value)};
+$('#loop').onchange=e=>{S.loop=e.target.checked};
+$('#bGen').onclick=genTabs;
+$('#capo').onchange=e=>{S.capo=Math.max(0,Math.min(12,+e.target.value||0));renderPractice()};
+$('#bDemo').onclick=()=>{
+  S.sections=[];S.sel=-1;S.capo=0;$('#capo').value=0;
+  addSection({name:'Four chords',bpm:80,text:'G*4 D*4 Em*4 C*4'},false);
+  addSection({name:'Single notes',bpm:80,text:'6:0 6:3 5:0 5:2 4:0 4:2 3:0 3:2'},false);
+  addSection({name:'Power chords',bpm:80,text:'6:3+5:5 6:5+5:7 6:7+5:9 6:5+5:7'},false);
+  select(0);gmsg('Demo loaded. It works without a video in Learn mode.');
+};
+$('#chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b) select(+b.dataset.i)});
+$('#editor').addEventListener('change',e=>{
+  const sec=selSec(),f=e.target.dataset.f; if(!sec||!f) return;
+  const v=e.target.value;
+  if(f==='text'){
+    stopListen();sec.text=v;const r=parseSteps(v);sec.steps=r.out;sec.bad=r.bad;
+    S.part='all';resetRun();renderAll();return;
+  }
+  if(f==='name') sec.name=v; else sec[f]=+v||0;
+  renderChips();renderPractice();
+});
+$('#editor').addEventListener('click',e=>{
+  const act=e.target.dataset.act,sec=selSec(); if(!act||!sec) return;
+  if(act==='now-start'||act==='now-end'){
+    sec[act==='now-start'?'start':'end']=Math.round(getVT()*2)/2;renderEditor();
+  }else if(act==='remove'){
+    stopListen();S.sections.splice(S.sel,1);S.sel=S.sections.length?0:-1;S.part='all';resetRun();renderAll();
+  }
+});
+$('#bAdd').onclick=()=>{
+  const t=$('#newSteps').value.trim();if(!t) return;
+  addSection({name:$('#newName').value.trim()||'Section '+(S.sections.length+1),bpm:80,text:t});
+  $('#newName').value='';$('#newSteps').value='';
+};
+$('#modeSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b) return;
+  stopListen();S.mode=b.dataset.m;resetRun();renderPractice();
+  fb('',S.mode==='play'?'Play along follows the song. Set the section start, end, and BPM in Tabs so the steps line up with the music.':'Learn waits for you. Play each step and it moves on when you get it.');
+});
+$('#parts').addEventListener('click',e=>{
+  const b=e.target.closest('.chip');if(!b) return;
+  const wasOn=S.listening;if(wasOn) stopListen();
+  S.part=b.dataset.p==='all'?'all':+b.dataset.p;resetRun();renderPractice();
+});
+$('#strip').addEventListener('click',e=>{
+  const c=e.target.closest('.col');if(!c||S.mode!=='learn') return;
+  S.idx=+c.dataset.i;renderPractice();
+});
+$('#bListen').onclick=()=>S.listening?stopListen():startListen();
+$('#bRestart').onclick=()=>{resetRun();resetStats();renderPractice();fb('','Back to the start.');if(S.listening&&S.mode==='play')startPlay()};
+$('#bHear').onclick=()=>{const sec=selSec(),st=sec&&sec.steps[S.idx];if(st) strum(st)};
+$('#gate').oninput=e=>{S.gate=+e.target.value;$('#gmark').style.left=Math.min(100,S.gate*500)+'%'};
+$('#strict').onchange=e=>{S.strict=e.target.value};
+$('#off').oninput=e=>{S.offset=+e.target.value;$('#offv').textContent=S.offset};
+$('#bg').onchange=e=>{S.bg=e.target.checked};
+
+renderAll();
+</script>
+</body>
+</html>
